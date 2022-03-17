@@ -6,8 +6,11 @@ This will assume that Qt5.11 and vtk8.1 were already built in your machine.
 
 On cmake-gui you need to supply the addresses of your source code and where to build the binaries.
 ![image](https://user-images.githubusercontent.com/69776513/158720222-8f1e1441-d1dc-456a-9d7e-9eeb35f585ec.png)
+
 After that click on Configure. 
+
 ![image](https://user-images.githubusercontent.com/69776513/158720473-d344f51f-ba86-4373-9a76-22f57f1a7a78.png)
+
 A prompt will appear and on the generator choose VS16 2019. Click Finish.
 Then click Generate and finally, Open Project.
 
