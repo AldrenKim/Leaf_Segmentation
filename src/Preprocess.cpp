@@ -23,9 +23,11 @@ void edgeSmoothing1(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 	mls.setSearchRadius(15);
 	mls.setUpsamplingMethod(pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal>::UpsamplingMethod::DISTINCT_CLOUD);
 	//mls.setUpsamplingStepSize(0.5);
+	// For VOXEL_Grid_Dilation
 	//mls.setDilationVoxelSize(3);
 	//mls.setDilationIterations(2);
 	mls.setSqrGaussParam(100);
+	//For Random_Uniform_Density
 	//mls.setPointDensity(10);
 	mls.setDistinctCloud(xyzCloud);
 	mls.setNumberOfThreads(3);
