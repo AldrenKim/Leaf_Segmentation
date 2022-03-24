@@ -1125,10 +1125,40 @@ int CloudViewer::convertSurface() {
 	if (!xyzCloud) {
 		return -1;
 	}
+	
+	//pcl::PolygonMesh mesh = triangulationGreedyProjection(xyzCloud);
+	//viewer->addPolygonMesh(mesh, "mesh-greedy-projection");
+	//viewer->setRepresentationToSurfaceForAllActors();
 
-	pcl::PolygonMesh mesh = triangulationGreedyProjection(xyzCloud);
-	viewer->addPolygonMesh(mesh, "mesh-greedy-projection");
+	//pcl::PolygonMesh mesh = poisson_recon(xyzCloud);
+	//viewer->addPolygonMesh(mesh, "mesh-poisson");
+	//viewer->setRepresentationToSurfaceForAllActors();
+
+	pcl::PolygonMesh mesh = bsplineFitting(xyzCloud);
+	viewer->addPolygonMesh(mesh, "mesh-bsplineFitting");
 	viewer->setRepresentationToSurfaceForAllActors();
+
+	/* //Add MLS Cloud
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+	*cloud_with_normals = smoothingMLS(xyzCloud);
+
+	viewer->addPointCloud<pcl::PointNormal>(cloud_with_normals, "mls-cloud");
+	viewer->updatePointCloud<pcl::PointNormal>(cloud_with_normals, "mls-cloud");
+
+	// update tree widget
+	QTreeWidgetItem* cloudName = new QTreeWidgetItem(QStringList()
+		<< toQString("MLS Cloud"));
+	cloudName->setIcon(0, QIcon(":/Resources/images/icon.png"));
+	ui.dataTree->addTopLevelItem(cloudName);
+
+
+	mycloud_vec.push_back(mycloud);
+	showPointcloudAdd();
+	*/
+
+	//pcl::PolygonMesh mesh = bsplineFitting(xyzCloud);
+	//viewer->addPolygonMesh(mesh, "mesh_nurbs");
+	//viewer->setRepresentationToSurfaceForAllActors();
 
 	consoleLog("Convert surface", "", "", "");
 
