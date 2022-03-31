@@ -14,31 +14,64 @@ pcl::PolygonMesh edgeSmoothing(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 	pcl::PolygonMesh res = triangulationGreedyProjection(xyzCloud);
 	pcl::PolygonMeshConstPtr d(new pcl::PolygonMesh(res));
 	item.setInputMesh(d);
+	item.setBoundarySmoothing(true);
+	item.setEdgeAngle(M_PI / 18);
+	item.setFeatureAngle(M_PI / 3);
+	item.setFeatureEdgeSmoothing(true);
+	item.setNumIter(3);
 	item.process(res);
+	return res;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr morph(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud){
+	pcl::Morphology<pcl::PointXYZI> *mp = new pcl::Morphology<pcl::PointXYZI>();
+	pcl::PointCloud<pcl::PointXYZI>::Ptr xyzRGBCloud(new pcl::PointCloud<pcl::PointXYZI>);
+	pcl::PointCloud<pcl::PointXYZI>::Ptr xyzRGBCloudOut(new pcl::PointCloud<pcl::PointXYZI>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr res(new pcl::PointCloud<pcl::PointXYZ>);
+
+	xyzRGBCloud->points.resize(xyzCloud->size());
+	for (size_t i = 0; i < xyzRGBCloud->points.size(); i++){
+		xyzRGBCloud->points[i].x = xyzCloud->points[i].x;
+		xyzRGBCloud->points[i].y = xyzCloud->points[i].y;
+		xyzRGBCloud->points[i].z = xyzCloud->points[i].z;
+		xyzRGBCloud->points[i].intensity = 1.0;
+	}
+	mp->setInputCloud(xyzRGBCloud);
+	mp->closingBinary(*xyzRGBCloudOut);
+
+	res->points.resize(xyzRGBCloudOut->size());
+	for (size_t i = 0; i < xyzRGBCloudOut->points.size(); i++){
+		res->points[i].x = xyzRGBCloudOut->points[i].x;
+		res->points[i].y = xyzRGBCloudOut->points[i].y;
+		res->points[i].z = xyzRGBCloudOut->points[i].z;
+	}
+
 	return res;
 }
 
 void edgeSmoothing1(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 	pcl::PointCloud<pcl::PointNormal>mls_points;
-	pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
+	pcl::MovingLeastSquaresOMP<pcl::PointXYZ, pcl::PointNormal> mls;
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree_for_points(new pcl::search::KdTree<pcl::PointXYZ>);
 
 
 	mls.setComputeNormals(true);
 	mls.setSearchMethod(kdtree_for_points);
+	mls.setInputCloud(xyzCloud);
 	mls.setPolynomialOrder(2);
-	mls.setSearchRadius(15);
-	mls.setUpsamplingMethod(pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal>::UpsamplingMethod::DISTINCT_CLOUD);
+	mls.setSearchRadius(0.5);
+	mls.setSqrGaussParam(0.25);
+	mls.setNumberOfThreads(3);
+
+
+	//mls.setUpsamplingMethod(pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal>::UpsamplingMethod::VOXEL_GRID_DILATION);
 	//mls.setUpsamplingStepSize(0.5);
 	// For VOXEL_Grid_Dilation
-	//mls.setDilationVoxelSize(3);
-	//mls.setDilationIterations(2);
-	mls.setSqrGaussParam(100);
+	//mls.setDilationVoxelSize(0.2);
+	//mls.setDilationIterations(5);
 	//For Random_Uniform_Density
 	//mls.setPointDensity(10);
-	mls.setDistinctCloud(xyzCloud);
-	mls.setNumberOfThreads(3);
-	mls.setInputCloud(xyzCloud);
+	//mls.setDistinctCloud(xyzCloud);
 	mls.process(mls_points);
 
 	if(mls_points.size() > 0)

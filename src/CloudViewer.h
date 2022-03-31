@@ -148,7 +148,7 @@ private:
 	// Pre-process Slots
 	int edgeDetect();
 	int edgeSmooth();
-	void morphological();
+	int morphological();
 
 public slots:
 	void save();

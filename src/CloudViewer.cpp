@@ -123,8 +123,28 @@ int CloudViewer::edgeSmooth(){
 	}
 	return 0;
 }
-void CloudViewer::morphological(){
-	consoleLog("Morphological", "Connected", "", "");
+int CloudViewer::morphological(){
+	pcl::PointXYZ point;
+	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
+		point.x = mycloud.cloud->points[i].x;
+		point.y = mycloud.cloud->points[i].y;
+		point.z = mycloud.cloud->points[i].z;
+		xyzCloud->push_back(point);
+	}
+	if (!xyzCloud) {
+		return -1;
+	}
+	pcl::PointCloud<pcl::PointXYZ>::Ptr temp = morph(xyzCloud);
+	viewer->addPointCloud(temp);
+	viewer->setRepresentationToPointsForAllActors();
+
+	viewer->removeAllShapes();
+	while (!viewer->wasStopped()) {
+		viewer->spinOnce(100);
+	}
+	consoleLog("Morphological", "Done", "", "");
+	return 0;
 }
 
 
