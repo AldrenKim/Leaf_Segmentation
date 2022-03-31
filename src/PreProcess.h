@@ -9,11 +9,11 @@
 #include <pcl/surface/mls.h>
 #include <pcl/io/pcd_io.h>
 #include <cmath>
-<<<<<<< HEAD
 #include <pcl/surface/on_nurbs/triangulation.h>
 #include <pcl/surface/on_nurbs/fitting_surface_tdm.h>
 #include <pcl/surface/on_nurbs/fitting_curve_2d_asdm.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/2d/morphology.h>
 
 typedef pcl::PointXYZ Point;
 
@@ -28,10 +28,7 @@ pcl::PolygonMesh poisson_recon(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 void edgeSmoothing1(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 pcl::PointCloud<pcl::PointNormal> smoothingMLS(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 pcl::PolygonMesh bsplineFitting(pcl::PointCloud<Point>::Ptr xyzCloud); // boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer);
-=======
-#include <pcl/2d/morphology.h>
 
 pcl::PolygonMesh edgeSmoothing(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 void edgeSmoothing1(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 pcl::PointCloud<pcl::PointXYZ>::Ptr morph(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
->>>>>>> d62eec9 (Added Morphological operation for preprocesses.)
