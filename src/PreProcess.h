@@ -32,3 +32,4 @@ pcl::PolygonMesh bsplineFitting(pcl::PointCloud<Point>::Ptr xyzCloud); // boost:
 pcl::PolygonMesh edgeSmoothing(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 void edgeSmoothing1(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 pcl::PointCloud<pcl::PointXYZ>::Ptr morph(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
+pcl::PointCloud<pcl::PointXYZ>::Ptr downsampleFile(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);

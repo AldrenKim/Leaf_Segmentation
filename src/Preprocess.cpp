@@ -8,6 +8,8 @@
 #include <pcl/surface/mls.h>
 #include <pcl/surface/poisson.h>
 #include <pcl/filters/passthrough.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/conversions.h>
 
 pcl::PolygonMesh edgeSmoothing(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 	pcl::MeshSmoothingLaplacianVTK item;
@@ -21,6 +23,28 @@ pcl::PolygonMesh edgeSmoothing(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 	item.setNumIter(3);
 	item.process(res);
 	return res;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr downsampleFile(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
+	pcl::VoxelGrid<pcl::PCLPointCloud2> dple;
+	pcl::PCLPointCloud2::Ptr input(new pcl::PCLPointCloud2());
+
+
+	printf("Pointcloud before filtering: %u, %u\n", xyzCloud->width, xyzCloud->height);
+
+	pcl::toPCLPointCloud2(*xyzCloud, *input);
+	dple.setInputCloud(input);
+	dple.setLeafSize(0.3f, 0.3f, 0.3f); //=3%
+	dple.filter(*input);
+
+	printf("Pointcloud after filtering: %u, %u\n", input->width, input->height);
+
+	pcl::fromPCLPointCloud2(*input, *xyzCloud);
+
+	if (xyzCloud->size() > 0)
+		pcl::io::savePCDFile("pcdDownsample.pcd", *xyzCloud);
+
+	return xyzCloud;
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr morph(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud){
@@ -124,13 +148,13 @@ pcl::PolygonMesh poisson_recon(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_smoothed_normals(new pcl::PointCloud<pcl::PointNormal>());
 	concatenateFields(*filtered, *cloud_normals, *cloud_smoothed_normals);
 	*/
-	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
+	pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> normalEstimation;
 	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
 	tree->setInputCloud(xyzCloud);
 	normalEstimation.setInputCloud(xyzCloud);
 	normalEstimation.setSearchMethod(tree);
-	normalEstimation.setKSearch(20);
+	normalEstimation.setKSearch(10);
 	normalEstimation.compute(*normals);
 
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
@@ -143,10 +167,10 @@ pcl::PolygonMesh poisson_recon(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 
 	cout << "begin poisson reconstruction" << endl;
 	pcl::Poisson<pcl::PointNormal> poisson;
-	poisson.setDepth(8);
-	poisson.setSolverDivide(8);
-	poisson.setIsoDivide(8);
-	poisson.setPointWeight(4.0f);
+	poisson.setDepth(4);
+	poisson.setSolverDivide(5);
+	poisson.setIsoDivide(5);
+	poisson.setPointWeight(8.0f);
 	poisson.setInputCloud(cloudWithNormals);
 	pcl::PolygonMesh mesh;
 	poisson.reconstruct(mesh);
@@ -165,7 +189,7 @@ pcl::PolygonMesh bsplineFitting(pcl::PointCloud<Point>::Ptr xyzCloud) { //, boos
 	unsigned order(3);
 	unsigned refinement(3);
 	unsigned iterations(10);
-	unsigned mesh_resolution(256);
+	unsigned mesh_resolution(128);
 
 	pcl::on_nurbs::FittingSurface::Parameter params;
 	params.interior_smoothness = 0.2;
@@ -220,7 +244,7 @@ pcl::PolygonMesh bsplineFitting(pcl::PointCloud<Point>::Ptr xyzCloud) { //, boos
 	curve_params.addCPsAccuracy = 5e-2;
 	curve_params.addCPsIteration = 3;
 	curve_params.maxCPs = 200;
-	curve_params.accuracy = 1e-3;
+	curve_params.accuracy = 1.5e3; //should not be negative
 	curve_params.iterations = 100;
 	
 	curve_params.param.closest_point_resolution = 0;
@@ -304,3 +328,4 @@ void visualizeCurve(ON_NurbsCurve & curve, ON_NurbsSurface & surface, boost::sha
 	viewer->removePointCloud("cloud_cps");
 	viewer->addPointCloud(curve_cps, "cloud_cps");
 }
+
