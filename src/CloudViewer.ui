@@ -170,8 +170,18 @@
      <string>Pre-process</string>
     </property>
     <addaction name="edgeSmoothAction"/>
-    <addaction name="morphoAction"/>
+    <addaction name="downsampleAction"/>
     <addaction name="edgeDetectAction"/>
+   </widget>
+   <widget class="QMenu" name="menuSurface_Reconstruction">
+    <property name="title">
+     <string>Surface Reconstruction</string>
+    </property>
+    <addaction name="poissonAction"/>
+    <addaction name="bsplineAction"/>
+    <addaction name="pass_through_MLS_PoissonAction"/>
+    <addaction name="pass_through_MLS_NormalsAction"/>
+    <addaction name="mlsAction"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -180,6 +190,7 @@
    <addaction name="menuOption"/>
    <addaction name="menuAbout"/>
    <addaction name="menuPre_process"/>
+   <addaction name="menuSurface_Reconstruction"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -1138,14 +1149,39 @@
     <string>Edge Smoothing</string>
    </property>
   </action>
-  <action name="morphoAction">
+  <action name="downsampleAction">
    <property name="text">
-    <string>Morphological</string>
+    <string>Downsample</string>
    </property>
   </action>
   <action name="edgeDetectAction">
    <property name="text">
     <string>Edge Detection</string>
+   </property>
+  </action>
+  <action name="poissonAction">
+   <property name="text">
+    <string>Poisson</string>
+   </property>
+  </action>
+  <action name="bsplineAction">
+   <property name="text">
+    <string>B-Spline</string>
+   </property>
+  </action>
+  <action name="pass_through_MLS_PoissonAction">
+   <property name="text">
+    <string>Pass-through+MLS Poisson</string>
+   </property>
+  </action>
+  <action name="pass_through_MLS_NormalsAction">
+   <property name="text">
+    <string>Pass-through+MLS+Normals</string>
+   </property>
+  </action>
+  <action name="mlsAction">
+   <property name="text">
+    <string>MLS</string>
    </property>
   </action>
  </widget>

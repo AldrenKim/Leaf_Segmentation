@@ -148,7 +148,14 @@ private:
 	// Pre-process Slots
 	int edgeDetect();
 	int edgeSmooth();
-	int morphological();
+	int downsample();
+
+	//Surface Reconstruction Slots
+	int poisson();
+	int bspline();
+	int poisson3v();
+	int poisson2v();
+	int mls();
 
 public slots:
 	void save();
