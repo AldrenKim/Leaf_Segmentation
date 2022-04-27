@@ -44,7 +44,15 @@ CloudViewer::CloudViewer(QWidget *parent)
 	//Pre-process (connect)
 	QObject::connect(ui.edgeDetectAction, &QAction::triggered, this, &CloudViewer::edgeDetect);
 	QObject::connect(ui.edgeSmoothAction, &QAction::triggered, this, &CloudViewer::edgeSmooth);
-	QObject::connect(ui.morphoAction, &QAction::triggered, this, &CloudViewer::morphological);
+	QObject::connect(ui.downsampleAction, &QAction::triggered, this, &CloudViewer::downsample);
+
+	//Surface Reconstruction (connect)
+
+	QObject::connect(ui.poissonAction, &QAction::triggered, this, &CloudViewer::poisson);
+	QObject::connect(ui.bsplineAction, &QAction::triggered, this, &CloudViewer::bspline);
+	QObject::connect(ui.pass_through_MLS_PoissonAction, &QAction::triggered, this, &CloudViewer::poisson3v);
+	QObject::connect(ui.pass_through_MLS_NormalsAction, &QAction::triggered, this, &CloudViewer::poisson2v);
+	QObject::connect(ui.mlsAction, &QAction::triggered, this, &CloudViewer::mls);
 
 	/***** Slots connection of RGB widget *****/
 	// Random color (connect)
@@ -80,7 +88,7 @@ CloudViewer::CloudViewer(QWidget *parent)
 CloudViewer::~CloudViewer() {
 
 }
-
+//Pre-process
 int CloudViewer::edgeDetect() {
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -115,15 +123,13 @@ int CloudViewer::edgeSmooth(){
 	viewer->addPolygonMesh(mesh, "mesh-greedy-projection");
 	viewer->setRepresentationToSurfaceForAllActors();
 
-	consoleLog("Smoothen Edge", "", "", "");
-
 	viewer->removeAllShapes();
 	while (!viewer->wasStopped()) {
 		viewer->spinOnce(100);
 	}
 	return 0;
 }
-int CloudViewer::morphological(){
+int CloudViewer::downsample(){
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -135,18 +141,120 @@ int CloudViewer::morphological(){
 	if (!xyzCloud) {
 		return -1;
 	}
-	pcl::PointCloud<pcl::PointXYZ>::Ptr temp = morph(xyzCloud);
-	viewer->addPointCloud(temp);
-	viewer->setRepresentationToPointsForAllActors();
+	
+	xyzCloud = downsampleFile(xyzCloud);
+
+	consoleLog("Downsample", "Done", "", "");
+	return 0;
+}
+
+//Surface Resconstruction
+int CloudViewer::poisson() {
+	pcl::PointXYZ point;
+	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
+		point.x = mycloud.cloud->points[i].x;
+		point.y = mycloud.cloud->points[i].y;
+		point.z = mycloud.cloud->points[i].z;
+		xyzCloud->push_back(point);
+	}
+	if (!xyzCloud) {
+		return -1;
+	}
+
+	pcl::PolygonMesh mesh = poisson_recon(xyzCloud);
+	viewer->addPolygonMesh(mesh, "mesh-poisson");
+	viewer->setRepresentationToSurfaceForAllActors();
+
+	/* //Add MLS Cloud
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+	*cloud_with_normals = smoothingMLS(xyzCloud);
+
+	viewer->addPointCloud<pcl::PointNormal>(cloud_with_normals, "mls-cloud");
+	viewer->updatePointCloud<pcl::PointNormal>(cloud_with_normals, "mls-cloud");
+
+	// update tree widget
+	QTreeWidgetItem* cloudName = new QTreeWidgetItem(QStringList()
+		<< toQString("MLS Cloud"));
+	cloudName->setIcon(0, QIcon(":/Resources/images/icon.png"));
+	ui.dataTree->addTopLevelItem(cloudName);
+
+
+	mycloud_vec.push_back(mycloud);
+	showPointcloudAdd();
+	*/
+
+	//pcl::PolygonMesh mesh = bsplineFitting(xyzCloud);
+	//viewer->addPolygonMesh(mesh, "mesh_nurbs");
+	//viewer->setRepresentationToSurfaceForAllActors();
+
+	consoleLog("Surface Reconstruction", "Poisson", "", "");
 
 	viewer->removeAllShapes();
 	while (!viewer->wasStopped()) {
 		viewer->spinOnce(100);
 	}
-	consoleLog("Morphological", "Done", "", "");
 	return 0;
 }
+int CloudViewer::bspline() {
+	pcl::PointXYZ point;
+	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
+		point.x = mycloud.cloud->points[i].x;
+		point.y = mycloud.cloud->points[i].y;
+		point.z = mycloud.cloud->points[i].z;
+		xyzCloud->push_back(point);
+	}
+	if (!xyzCloud) {
+		return -1;
+	}
 
+	pcl::PolygonMesh mesh = bsplineFitting(xyzCloud);
+	viewer->addPolygonMesh(mesh, "mesh-bsplineFitting");
+	viewer->setRepresentationToSurfaceForAllActors();
+
+	/* //Add MLS Cloud
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+	*cloud_with_normals = smoothingMLS(xyzCloud);
+
+	viewer->addPointCloud<pcl::PointNormal>(cloud_with_normals, "mls-cloud");
+	viewer->updatePointCloud<pcl::PointNormal>(cloud_with_normals, "mls-cloud");
+
+	// update tree widget
+	QTreeWidgetItem* cloudName = new QTreeWidgetItem(QStringList()
+		<< toQString("MLS Cloud"));
+	cloudName->setIcon(0, QIcon(":/Resources/images/icon.png"));
+	ui.dataTree->addTopLevelItem(cloudName);
+
+
+	mycloud_vec.push_back(mycloud);
+	showPointcloudAdd();
+	*/
+
+	//pcl::PolygonMesh mesh = bsplineFitting(xyzCloud);
+	//viewer->addPolygonMesh(mesh, "mesh_nurbs");
+	//viewer->setRepresentationToSurfaceForAllActors();
+
+	consoleLog("Surface Reconstruction", "B-Spline", "", "");
+
+	viewer->removeAllShapes();
+	while (!viewer->wasStopped()) {
+		viewer->spinOnce(100);
+	}
+	return 0;
+}
+int CloudViewer::poisson3v() {
+	//insert code here
+	return 0;
+}
+int CloudViewer::poisson2v() {
+	//insert code here
+	return 0;
+}
+int CloudViewer::mls() {
+	//insert code here
+	return 0;
+}
 
 void CloudViewer::doOpen(const QStringList& filePathList) {
 	// Open point cloud file one by one
@@ -1146,17 +1254,19 @@ int CloudViewer::convertSurface() {
 		return -1;
 	}
 	
-	//pcl::PolygonMesh mesh = triangulationGreedyProjection(xyzCloud);
-	//viewer->addPolygonMesh(mesh, "mesh-greedy-projection");
-	//viewer->setRepresentationToSurfaceForAllActors();
+	pcl::PolygonMesh mesh = triangulationGreedyProjection(xyzCloud);
+	viewer->addPolygonMesh(mesh, "mesh-greedy-projection");
+	viewer->setRepresentationToSurfaceForAllActors();
 
 	//pcl::PolygonMesh mesh = poisson_recon(xyzCloud);
 	//viewer->addPolygonMesh(mesh, "mesh-poisson");
 	//viewer->setRepresentationToSurfaceForAllActors();
 
-	pcl::PolygonMesh mesh = bsplineFitting(xyzCloud);
+
+
+	/*pcl::PolygonMesh mesh = bsplineFitting(xyzCloud);
 	viewer->addPolygonMesh(mesh, "mesh-bsplineFitting");
-	viewer->setRepresentationToSurfaceForAllActors();
+	viewer->setRepresentationToSurfaceForAllActors();*/
 
 	/* //Add MLS Cloud
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
