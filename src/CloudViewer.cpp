@@ -50,8 +50,8 @@ CloudViewer::CloudViewer(QWidget *parent)
 
 	QObject::connect(ui.poissonAction, &QAction::triggered, this, &CloudViewer::poisson);
 	QObject::connect(ui.bsplineAction, &QAction::triggered, this, &CloudViewer::bspline);
-	QObject::connect(ui.pass_through_MLS_PoissonAction, &QAction::triggered, this, &CloudViewer::poisson3v);
-	QObject::connect(ui.pass_through_MLS_NormalsAction, &QAction::triggered, this, &CloudViewer::poisson2v);
+	QObject::connect(ui.pass_through_MLS_PoissonAction, &QAction::triggered, this, &CloudViewer::poisson2v);
+	QObject::connect(ui.pass_through_MLS_NormalsAction, &QAction::triggered, this, &CloudViewer::poisson3v);
 	QObject::connect(ui.mlsAction, &QAction::triggered, this, &CloudViewer::mls);
 
 	/***** Slots connection of RGB widget *****/
@@ -162,7 +162,7 @@ int CloudViewer::poisson() {
 		return -1;
 	}
 
-	pcl::PolygonMesh mesh = poisson_recon(xyzCloud);
+	pcl::PolygonMesh mesh = poisson_recon_MLS(xyzCloud);
 	viewer->addPolygonMesh(mesh, "mesh-poisson");
 	viewer->setRepresentationToSurfaceForAllActors();
 
@@ -244,15 +244,57 @@ int CloudViewer::bspline() {
 	return 0;
 }
 int CloudViewer::poisson3v() {
-	//insert code here
+	pcl::PointXYZ point;
+	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
+		point.x = mycloud.cloud->points[i].x;
+		point.y = mycloud.cloud->points[i].y;
+		point.z = mycloud.cloud->points[i].z;
+		xyzCloud->push_back(point);
+	}
+	if (!xyzCloud) {
+		return -1;
+	}
+
+	pcl::PolygonMesh mesh = poisson_recon_MLS_Pass_NE(xyzCloud);
+	viewer->addPolygonMesh(mesh, "mesh-poisson-mls-pass-NE");
+	viewer->setRepresentationToSurfaceForAllActors();
+	consoleLog("Surface Reconstruction", "Passthrough-MLS-NE", "", "");
+
+	viewer->removeAllShapes();
+	while (!viewer->wasStopped()) {
+		viewer->spinOnce(100);
+	}
+
 	return 0;
 }
 int CloudViewer::poisson2v() {
-	//insert code here
+	pcl::PointXYZ point;
+	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
+		point.x = mycloud.cloud->points[i].x;
+		point.y = mycloud.cloud->points[i].y;
+		point.z = mycloud.cloud->points[i].z;
+		xyzCloud->push_back(point);
+	}
+	if (!xyzCloud) {
+		return -1;
+	}
+
+	pcl::PolygonMesh mesh = poisson_recon_MLS_Pass(xyzCloud);
+	viewer->addPolygonMesh(mesh, "mesh-poisson-mls-pass");
+	viewer->setRepresentationToSurfaceForAllActors();
+	consoleLog("Surface Reconstruction", "Passthrough-MLS", "", "");
+
+	viewer->removeAllShapes();
+	while (!viewer->wasStopped()) {
+		viewer->spinOnce(100);
+	};
 	return 0;
 }
 int CloudViewer::mls() {
 	//insert code here
+	consoleLog("MLS", "DONE", "", "");
 	return 0;
 }
 

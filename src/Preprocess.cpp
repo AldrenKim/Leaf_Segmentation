@@ -118,8 +118,76 @@ pcl::PointCloud<pcl::PointNormal> smoothingMLS(pcl::PointCloud<pcl::PointXYZ>::P
 	return mls_points;
 }
 
-pcl::PolygonMesh poisson_recon(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
-	/*
+pcl::PolygonMesh poisson_recon_MLS(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
+
+	pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> normalEstimation;
+	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+	tree->setInputCloud(xyzCloud);
+	normalEstimation.setNumberOfThreads(8);
+	normalEstimation.setInputCloud(xyzCloud);
+	normalEstimation.setSearchMethod(tree);
+	normalEstimation.setKSearch(10);
+	normalEstimation.compute(*normals);
+
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
+	// Concatenate the obtained point data and normal data
+	pcl::concatenateFields(*xyzCloud, *normals, *cloudWithNormals);
+
+	// another kd-tree for reconstruction
+	pcl::search::KdTree<pcl::PointNormal>::Ptr tree2(new pcl::search::KdTree<pcl::PointNormal>);
+	tree2->setInputCloud(cloudWithNormals);
+
+	cout << "begin poisson reconstruction" << endl;
+	pcl::Poisson<pcl::PointNormal> poisson;
+	poisson.setDepth(4);
+	poisson.setSolverDivide(5);
+	poisson.setIsoDivide(5);
+	poisson.setPointWeight(8.0f);
+	poisson.setInputCloud(cloudWithNormals);
+	pcl::PolygonMesh mesh;
+	poisson.reconstruct(mesh);
+
+	return mesh;
+}
+pcl::PolygonMesh poisson_recon_MLS_Pass(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filtered(new pcl::PointCloud<pcl::PointXYZ>());
+	pcl::PassThrough<pcl::PointXYZ> filter;
+	filter.setInputCloud(xyzCloud);
+	filter.filter(*filtered);
+
+	pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> ne;
+	ne.setNumberOfThreads(8);
+	ne.setInputCloud(filtered);
+	ne.setRadiusSearch(0.01);
+
+	pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>());
+	ne.compute(*cloud_normals);
+	cout << "normal estimation complete" << endl;
+	cout << "reverse normals' direction" << endl;
+
+	for (size_t i = 0; i < cloud_normals->size(); ++i) {
+		cloud_normals->points[i].normal_x *= -1;
+		cloud_normals->points[i].normal_y *= -1;
+		cloud_normals->points[i].normal_z *= -1;
+	}
+
+	cout << "combine points and normals" << endl;
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_smoothed_normals(new pcl::PointCloud<pcl::PointNormal>());
+	concatenateFields(*filtered, *cloud_normals, *cloud_smoothed_normals);
+
+	pcl::Poisson<pcl::PointNormal> poisson;
+	poisson.setDepth(4);
+	poisson.setSolverDivide(5);
+	poisson.setIsoDivide(5);
+	poisson.setPointWeight(8.0f);
+	poisson.setInputCloud(cloud_smoothed_normals);
+	pcl::PolygonMesh mesh;
+	poisson.reconstruct(mesh);
+
+	return mesh;
+}
+pcl::PolygonMesh poisson_recon_MLS_Pass_NE(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr filtered(new pcl::PointCloud<pcl::PointXYZ>());
 	pcl::PassThrough<pcl::PointXYZ> filter;
 	filter.setInputCloud(xyzCloud);
@@ -147,36 +215,24 @@ pcl::PolygonMesh poisson_recon(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 	cout << "combine points and normals" << endl;
 	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_smoothed_normals(new pcl::PointCloud<pcl::PointNormal>());
 	concatenateFields(*filtered, *cloud_normals, *cloud_smoothed_normals);
-	*/
-	pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> normalEstimation;
-	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-	tree->setInputCloud(xyzCloud);
-	normalEstimation.setInputCloud(xyzCloud);
-	normalEstimation.setSearchMethod(tree);
-	normalEstimation.setKSearch(10);
-	normalEstimation.compute(*normals);
 
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
-	// Concatenate the obtained point data and normal data
-	pcl::concatenateFields(*xyzCloud, *normals, *cloudWithNormals);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr result(new pcl::PointCloud<pcl::PointXYZ>());
+	result->resize(cloud_smoothed_normals->size());
 
-	// another kd-tree for reconstruction
-	pcl::search::KdTree<pcl::PointNormal>::Ptr tree2(new pcl::search::KdTree<pcl::PointNormal>);
-	tree2->setInputCloud(cloudWithNormals);
-
-	cout << "begin poisson reconstruction" << endl;
 	pcl::Poisson<pcl::PointNormal> poisson;
 	poisson.setDepth(4);
 	poisson.setSolverDivide(5);
 	poisson.setIsoDivide(5);
 	poisson.setPointWeight(8.0f);
-	poisson.setInputCloud(cloudWithNormals);
+	poisson.setInputCloud(cloud_smoothed_normals);
 	pcl::PolygonMesh mesh;
 	poisson.reconstruct(mesh);
 
 	return mesh;
 }
+
+
+
 
 pcl::PolygonMesh bsplineFitting(pcl::PointCloud<Point>::Ptr xyzCloud) { //, boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer) {
 	pcl::on_nurbs::NurbsDataSurface data;
