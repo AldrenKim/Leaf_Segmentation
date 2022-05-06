@@ -10,6 +10,12 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/conversions.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/segmentation/supervoxel_clustering.h>
+#include <pcl/console/parse.h>
+
+//VTK include needed for drawing graph lines
+#include <vtkPolyLine.h>
 
 pcl::PolygonMesh edgeSmoothing(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
 	pcl::MeshSmoothingLaplacianVTK item;
@@ -230,6 +236,78 @@ pcl::PolygonMesh poisson_recon_MLS_Pass_NE(pcl::PointCloud<pcl::PointXYZ>::Ptr x
 
 	return mesh;
 }
+pcl::PolygonMesh poisson_recon_normal(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
+	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
+	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+	tree->setInputCloud(xyzCloud);
+	normalEstimation.setInputCloud(xyzCloud);
+	normalEstimation.setSearchMethod(tree);
+	normalEstimation.setKSearch(20);
+	normalEstimation.compute(*normals);
+
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
+	// Concatenate the obtained point data and normal data
+	pcl::concatenateFields(*xyzCloud, *normals, *cloudWithNormals);
+
+	// another kd-tree for reconstruction
+	pcl::search::KdTree<pcl::PointNormal>::Ptr tree2(new pcl::search::KdTree<pcl::PointNormal>);
+	tree2->setInputCloud(cloudWithNormals);
+
+	cout << "begin poisson reconstruction" << endl;
+	pcl::Poisson<pcl::PointNormal> poisson;
+	poisson.setDepth(8);
+	poisson.setSolverDivide(8);
+	poisson.setIsoDivide(8);
+	poisson.setPointWeight(4.0f);
+	poisson.setInputCloud(cloudWithNormals);
+	pcl::PolygonMesh mesh;
+	poisson.reconstruct(mesh);
+
+	return mesh;
+}
+pcl::PolygonMesh poisson_recon_centroid(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
+	
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filtered(new pcl::PointCloud<pcl::PointXYZ>());
+	pcl::PassThrough<pcl::PointXYZ> filter;
+	filter.setInputCloud(xyzCloud);
+	filter.filter(*filtered);
+
+	pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> ne;
+	ne.setNumberOfThreads(8);
+	ne.setInputCloud(filtered);
+	ne.setRadiusSearch(0.01);
+	Eigen::Vector4f centroid;
+	compute3DCentroid(*filtered, centroid);
+	ne.setViewPoint(centroid[0], centroid[1], centroid[2]);
+
+	pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>());
+	ne.compute(*cloud_normals);
+	cout << "normal estimation complete" << endl;
+	cout << "reverse normals' direction" << endl;
+
+	for (size_t i = 0; i < cloud_normals->size(); ++i) {
+		cloud_normals->points[i].normal_x *= -1;
+		cloud_normals->points[i].normal_y *= -1;
+		cloud_normals->points[i].normal_z *= -1;
+	}
+
+	cout << "combine points and normals" << endl;
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_smoothed_normals(new pcl::PointCloud<pcl::PointNormal>());
+	concatenateFields(*filtered, *cloud_normals, *cloud_smoothed_normals);
+	
+	cout << "begin poisson reconstruction" << endl;
+	pcl::Poisson<pcl::PointNormal> poisson;
+	poisson.setDepth(8);
+	poisson.setSolverDivide(8);
+	poisson.setIsoDivide(8);
+	poisson.setPointWeight(4.0f);
+	poisson.setInputCloud(cloud_smoothed_normals);
+	pcl::PolygonMesh mesh;
+	poisson.reconstruct(mesh);
+
+	return mesh;
+}
 
 
 
@@ -385,3 +463,133 @@ void visualizeCurve(ON_NurbsCurve & curve, ON_NurbsSurface & surface, boost::sha
 	viewer->addPointCloud(curve_cps, "cloud_cps");
 }
 
+void ransacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
+	pcl::SampleConsensusModelPlane<pcl::PointXYZ>::Ptr
+		model_p(new pcl::SampleConsensusModelPlane<pcl::PointXYZ>(xyzCloud));
+	pcl::RandomSampleConsensus<pcl::PointXYZ> ransac(model_p);
+	std::vector<int> inliers;
+
+	ransac.setDistanceThreshold(.01);
+	ransac.computeModel();
+	ransac.getInliers(inliers);
+
+	pcl::copyPointCloud(*xyzCloud, inliers, *xyzCloud);
+}
+
+void supervoxels_segmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud, boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer) {
+	PointCloudT::Ptr cloud(new PointCloudT);
+	cloud->points.resize(xyzCloud->size());
+
+	for (size_t i = 0; i < xyzCloud->points.size(); i++) {
+		cloud->points[i].x = xyzCloud->points[i].x;
+		cloud->points[i].y = xyzCloud->points[i].y;
+		cloud->points[i].z = xyzCloud->points[i].z;
+	}
+
+	bool disable_transform = true;
+
+	float voxel_resolution = 0.008f;
+	bool voxel_res_specified = true;
+
+	float seed_resolution = 0.1f;
+	bool seed_res_specified = true;
+
+	float color_importance = 0.2f;
+
+	float spatial_importance = 0.4f;
+
+	float normal_importance = 1.0f;
+
+	//////////////////////////////  //////////////////////////////
+	////// This is how to use supervoxels
+	//////////////////////////////  //////////////////////////////
+
+	pcl::SupervoxelClustering<PointT> super(voxel_resolution, seed_resolution);
+	if (disable_transform)
+		super.setUseSingleCameraTransform(false);
+	super.setInputCloud(cloud);
+	super.setColorImportance(color_importance);
+	super.setSpatialImportance(spatial_importance);
+	super.setNormalImportance(normal_importance);
+
+	std::map <std::uint32_t, pcl::Supervoxel<PointT>::Ptr > supervoxel_clusters;
+
+	pcl::console::print_highlight("Extracting supervoxels!\n");
+	super.extract(supervoxel_clusters);
+	pcl::console::print_info("Found %d supervoxels\n", supervoxel_clusters.size());
+
+	viewer->setBackgroundColor(0, 0, 0);
+
+	PointCloudT::Ptr voxel_centroid_cloud = super.getVoxelCentroidCloud();
+	viewer->addPointCloud(voxel_centroid_cloud, "voxel centroids");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2.0, "voxel centroids");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.95, "voxel centroids");
+
+	PointLCloudT::Ptr labeled_voxel_cloud = super.getLabeledVoxelCloud();
+	viewer->addPointCloud(labeled_voxel_cloud, "labeled voxels");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.8, "labeled voxels");
+
+	PointNCloudT::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud(supervoxel_clusters);
+	//We have this disabled so graph is easy to see, uncomment to see supervoxel normals
+	//viewer->addPointCloudNormals<PointNormal> (sv_normal_cloud,1,0.05f, "supervoxel_normals");
+
+	pcl::console::print_highlight("Getting supervoxel adjacency\n");
+	std::multimap<std::uint32_t, std::uint32_t> supervoxel_adjacency;
+	super.getSupervoxelAdjacency(supervoxel_adjacency);
+	//To make a graph of the supervoxel adjacency, we need to iterate through the supervoxel adjacency multimap
+	for (auto label_itr = supervoxel_adjacency.cbegin(); label_itr != supervoxel_adjacency.cend(); )
+	{
+		//First get the label
+		std::uint32_t supervoxel_label = label_itr->first;
+		//Now get the supervoxel corresponding to the label
+		pcl::Supervoxel<PointT>::Ptr supervoxel = supervoxel_clusters.at(supervoxel_label);
+
+		//Now we need to iterate through the adjacent supervoxels and make a point cloud of them
+		PointCloudT adjacent_supervoxel_centers;
+		for (auto adjacent_itr = supervoxel_adjacency.equal_range(supervoxel_label).first; adjacent_itr != supervoxel_adjacency.equal_range(supervoxel_label).second; ++adjacent_itr)
+		{
+			pcl::Supervoxel<PointT>::Ptr neighbor_supervoxel = supervoxel_clusters.at(adjacent_itr->second);
+			adjacent_supervoxel_centers.push_back(neighbor_supervoxel->centroid_);
+		}
+		//Now we make a name for this polygon
+		std::stringstream ss;
+		ss << "supervoxel_" << supervoxel_label;
+		//This function is shown below, but is beyond the scope of this tutorial - basically it just generates a "star" polygon mesh from the points given
+		addSupervoxelConnectionsToViewer(supervoxel->centroid_, adjacent_supervoxel_centers, ss.str(), viewer);
+		//Move iterator forward to next label
+		label_itr = supervoxel_adjacency.upper_bound(supervoxel_label);
+	}
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+	}
+}
+
+void addSupervoxelConnectionsToViewer(PointT& supervoxel_center,
+	PointCloudT& adjacent_supervoxel_centers,
+	std::string supervoxel_name,
+	pcl::visualization::PCLVisualizer::Ptr& viewer)
+{
+	vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+	vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
+	vtkSmartPointer<vtkPolyLine> polyLine = vtkSmartPointer<vtkPolyLine>::New();
+
+	//Iterate through all adjacent points, and add a center point to adjacent point pair
+	for (auto adjacent_itr = adjacent_supervoxel_centers.begin(); adjacent_itr != adjacent_supervoxel_centers.end(); ++adjacent_itr)
+	{
+		points->InsertNextPoint(supervoxel_center.data);
+		points->InsertNextPoint(adjacent_itr->data);
+	}
+	// Create a polydata to store everything in
+	vtkSmartPointer<vtkPolyData> polyData = vtkSmartPointer<vtkPolyData>::New();
+	// Add the points to the dataset
+	polyData->SetPoints(points);
+	polyLine->GetPointIds()->SetNumberOfIds(points->GetNumberOfPoints());
+	for (unsigned int i = 0; i < points->GetNumberOfPoints(); i++)
+		polyLine->GetPointIds()->SetId(i, i);
+	cells->InsertNextCell(polyLine);
+	// Add the lines to the dataset
+	polyData->SetLines(cells);
+	viewer->addModelFromPolyData(polyData, supervoxel_name);
+}

@@ -1296,12 +1296,17 @@ int CloudViewer::convertSurface() {
 		return -1;
 	}
 	
-	pcl::PolygonMesh mesh = triangulationGreedyProjection(xyzCloud);
-	viewer->addPolygonMesh(mesh, "mesh-greedy-projection");
-	viewer->setRepresentationToSurfaceForAllActors();
+	//pcl::PolygonMesh mesh = triangulationGreedyProjection(xyzCloud);
+	//viewer->addPolygonMesh(mesh, "mesh-greedy-projection");
+	//viewer->setRepresentationToSurfaceForAllActors();
+
 
 	//pcl::PolygonMesh mesh = poisson_recon(xyzCloud);
 	//viewer->addPolygonMesh(mesh, "mesh-poisson");
+	//viewer->setRepresentationToSurfaceForAllActors();
+
+	//pcl::PolygonMesh mesh = bsplineFitting(xyzCloud);
+	//viewer->addPolygonMesh(mesh, "mesh-bsplineFitting");
 	//viewer->setRepresentationToSurfaceForAllActors();
 
 
@@ -1332,12 +1337,14 @@ int CloudViewer::convertSurface() {
 	//viewer->addPolygonMesh(mesh, "mesh_nurbs");
 	//viewer->setRepresentationToSurfaceForAllActors();
 
-	consoleLog("Convert surface", "", "", "");
+	//consoleLog("Convert surface", "", "", "");
 
-	viewer->removeAllShapes();
-	while (!viewer->wasStopped()) {
-		viewer->spinOnce(100);
-	}
+	//viewer->removeAllShapes();
+	//while (!viewer->wasStopped()) {
+	//	viewer->spinOnce(100);
+	//}
+	supervoxels_segmentation(xyzCloud, viewer);
+
 	return 0;
 }
 
