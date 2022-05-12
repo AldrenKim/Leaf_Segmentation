@@ -140,11 +140,6 @@ private:
 
 	void setCloudColor(unsigned int r, unsigned int g, unsigned int b);
 
-	void setPropertyTable();
-	void setConsoleTable();
-
-	void consoleLog(QString operation, QString subname, QString filename, QString note);
-
 	// Pre-process Slots
 	int edgeDetect();
 	int edgeSmooth();
@@ -184,11 +179,6 @@ public slots:
 
 	// set show mode
 	void setRenderingMode();
-
-	void popMenuInConsole(const QPoint&);
-	void clearConsole();
-	void enableConsole();
-	void disableConsole();
 
 	void debug(const string& s);
 };
