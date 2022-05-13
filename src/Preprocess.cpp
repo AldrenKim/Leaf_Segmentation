@@ -226,10 +226,10 @@ pcl::PolygonMesh poisson_recon_MLS_Pass_NE(pcl::PointCloud<pcl::PointXYZ>::Ptr x
 	result->resize(cloud_smoothed_normals->size());
 
 	pcl::Poisson<pcl::PointNormal> poisson;
-	poisson.setDepth(4);
-	poisson.setSolverDivide(5);
-	poisson.setIsoDivide(5);
-	poisson.setPointWeight(8.0f);
+	poisson.setDepth(8);
+	poisson.setSolverDivide(10);
+	poisson.setIsoDivide(10);
+	poisson.setPointWeight(10.0f);
 	poisson.setInputCloud(cloud_smoothed_normals);
 	pcl::PolygonMesh mesh;
 	poisson.reconstruct(mesh);
@@ -257,9 +257,9 @@ pcl::PolygonMesh poisson_recon_normal(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzClo
 	cout << "begin poisson reconstruction" << endl;
 	pcl::Poisson<pcl::PointNormal> poisson;
 	poisson.setDepth(8);
-	poisson.setSolverDivide(8);
-	poisson.setIsoDivide(8);
-	poisson.setPointWeight(4.0f);
+	poisson.setSolverDivide(10);
+	poisson.setIsoDivide(10);
+	poisson.setPointWeight(10.0f);
 	poisson.setInputCloud(cloudWithNormals);
 	pcl::PolygonMesh mesh;
 	poisson.reconstruct(mesh);
@@ -299,9 +299,9 @@ pcl::PolygonMesh poisson_recon_centroid(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzC
 	cout << "begin poisson reconstruction" << endl;
 	pcl::Poisson<pcl::PointNormal> poisson;
 	poisson.setDepth(8);
-	poisson.setSolverDivide(8);
-	poisson.setIsoDivide(8);
-	poisson.setPointWeight(4.0f);
+	poisson.setSolverDivide(10);
+	poisson.setIsoDivide(10);
+	poisson.setPointWeight(10.0f);
 	poisson.setInputCloud(cloud_smoothed_normals);
 	pcl::PolygonMesh mesh;
 	poisson.reconstruct(mesh);
