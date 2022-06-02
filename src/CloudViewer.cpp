@@ -54,6 +54,11 @@ CloudViewer::CloudViewer(QWidget *parent)
 	QObject::connect(ui.pass_through_MLS_NormalsAction, &QAction::triggered, this, &CloudViewer::poisson3v);
 	QObject::connect(ui.mlsAction, &QAction::triggered, this, &CloudViewer::mls);
 
+	//Surface Reconstruction (connect)
+
+	QObject::connect(ui.actionRANSAC_Plane, &QAction::triggered, this, &CloudViewer::ransac_plane);
+	QObject::connect(ui.actionSupervoxels, &QAction::triggered, this, &CloudViewer::supervoxels);
+
 	/***** Slots connection of RGB widget *****/
 	// Random color (connect)
 	connect(ui.colorBtn, SIGNAL(clicked()), this, SLOT(colorBtnPressed()));
@@ -1182,4 +1187,55 @@ int CloudViewer::convertWireframe() {
 
 void CloudViewer::debug(const string& s) {
 	QMessageBox::information(this, tr("Debug"), QString::fromLocal8Bit(s.c_str()));
+}
+
+//Segmentation
+int CloudViewer::ransac_plane() {
+	pcl::PointXYZ point;
+	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
+		point.x = mycloud.cloud->points[i].x;
+		point.y = mycloud.cloud->points[i].y;
+		point.z = mycloud.cloud->points[i].z;
+		xyzCloud->push_back(point);
+	}
+	if (!xyzCloud) {
+		return -1;
+	}
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr ransac = ransacPlane(xyzCloud);
+
+	mycloud.cloud.reset(new PointCloudT);
+	total_points = 0;
+	ui.dataTree->clear();  //清空资源管理器的item
+	viewer->removeAllPointClouds();  //从viewer中移除所有点云
+	mycloud_vec.clear();  //清空点云容器
+
+	pcl::copyPointCloud(*ransac, *mycloud.cloud);
+
+	QTreeWidgetItem* cloudName = new QTreeWidgetItem(QStringList() << QString::fromLocal8Bit("Ransac"));
+	cloudName->setIcon(0, QIcon(":/Resources/images/icon.png"));
+	ui.dataTree->addTopLevelItem(cloudName);
+
+	mycloud_vec.push_back(mycloud);
+	showPointcloudAdd();
+	return 0;
+}
+
+int CloudViewer::supervoxels() {
+	pcl::PointXYZ point;
+	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
+		point.x = mycloud.cloud->points[i].x;
+		point.y = mycloud.cloud->points[i].y;
+		point.z = mycloud.cloud->points[i].z;
+		xyzCloud->push_back(point);
+	}
+	if (!xyzCloud) {
+		return -1;
+	}
+
+	supervoxels_segmentation(xyzCloud, viewer);
+
+	return 0;
 }

@@ -463,20 +463,23 @@ void visualizeCurve(ON_NurbsCurve & curve, ON_NurbsSurface & surface, boost::sha
 	viewer->addPointCloud(curve_cps, "cloud_cps");
 }
 
-void ransacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
+pcl::PointCloud<pcl::PointXYZ>::Ptr ransacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
+	pcl::PointCloud<pcl::PointXYZ>::Ptr final(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::SampleConsensusModelPlane<pcl::PointXYZ>::Ptr
 		model_p(new pcl::SampleConsensusModelPlane<pcl::PointXYZ>(xyzCloud));
 	pcl::RandomSampleConsensus<pcl::PointXYZ> ransac(model_p);
 	std::vector<int> inliers;
 
-	ransac.setDistanceThreshold(.01);
+	ransac.setDistanceThreshold(0.1);
 	ransac.computeModel();
 	ransac.getInliers(inliers);
 
-	pcl::copyPointCloud(*xyzCloud, inliers, *xyzCloud);
+	pcl::copyPointCloud(*xyzCloud, inliers, *final);
+
+	return final;
 }
 
-void supervoxels_segmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud, boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer) {
+void supervoxels_segmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud, pcl::visualization::PCLVisualizer::Ptr& viewer) {
 	PointCloudT::Ptr cloud(new PointCloudT);
 	cloud->points.resize(xyzCloud->size());
 
@@ -486,19 +489,17 @@ void supervoxels_segmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud, boos
 		cloud->points[i].z = xyzCloud->points[i].z;
 	}
 
-	bool disable_transform = true;
+	bool disable_transform = false;
 
-	float voxel_resolution = 0.008f;
-	bool voxel_res_specified = true;
+	float voxel_resolution = 0.04f;
 
-	float seed_resolution = 0.1f;
-	bool seed_res_specified = true;
+	float seed_resolution = 0.2f;
 
-	float color_importance = 0.2f;
+	float color_importance = 0.1f;
 
 	float spatial_importance = 0.4f;
 
-	float normal_importance = 1.0f;
+	float normal_importance = 0.5f;
 
 	//////////////////////////////  //////////////////////////////
 	////// This is how to use supervoxels
@@ -564,13 +565,14 @@ void supervoxels_segmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud, boos
 	{
 		viewer->spinOnce(100);
 	}
+	pcl::console::print_highlight("Supervoxels done\n");
 }
 
-void addSupervoxelConnectionsToViewer(PointT& supervoxel_center,
+void addSupervoxelConnectionsToViewer(
+	PointT& supervoxel_center,
 	PointCloudT& adjacent_supervoxel_centers,
 	std::string supervoxel_name,
-	pcl::visualization::PCLVisualizer::Ptr& viewer)
-{
+	pcl::visualization::PCLVisualizer::Ptr& viewer ) {
 	vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
 	vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
 	vtkSmartPointer<vtkPolyLine> polyLine = vtkSmartPointer<vtkPolyLine>::New();
