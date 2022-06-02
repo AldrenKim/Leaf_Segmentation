@@ -16,6 +16,7 @@
 #include <pcl/2d/morphology.h>
 #include <pcl/sample_consensus/ransac.h>
 #include <pcl/sample_consensus/sac_model_plane.h>
+#include <pcl/sample_consensus/sac_model_sphere.h>
 
 typedef pcl::PointXYZ Point;
 
@@ -46,8 +47,8 @@ void edgeSmoothing1(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 pcl::PointCloud<pcl::PointXYZ>::Ptr morph(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 pcl::PointCloud<pcl::PointXYZ>::Ptr downsampleFile(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 
-void ransacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
+pcl::PointCloud<pcl::PointXYZ>::Ptr ransacPlane(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud);
 
 void addSupervoxelConnectionsToViewer(PointT& supervoxel_center, PointCloudT& adjacent_supervoxel_centers, std::string supervoxel_name, pcl::visualization::PCLVisualizer::Ptr& viewer);
 
-void supervoxels_segmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud, boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer);
+void supervoxels_segmentation(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud, pcl::visualization::PCLVisualizer::Ptr& viewer);

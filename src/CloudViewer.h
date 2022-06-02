@@ -152,6 +152,10 @@ private:
 	int poisson2v();
 	int mls();
 
+	//Segmentation Slots
+	int ransac_plane();
+	int supervoxels();
+
 public slots:
 	void save();
 	void changeTheme();
