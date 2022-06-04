@@ -92,6 +92,7 @@ CloudViewer::~CloudViewer() {
 }
 //Pre-process
 int CloudViewer::edgeDetect() {
+	timeStart();
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -105,9 +106,14 @@ int CloudViewer::edgeDetect() {
 	}
 
 	edgeSmoothing1(xyzCloud);
+	timeCostSecond = timeOff();
+	long size = xyzCloud->size();
+	cout << "Time cost: " << timeCostSecond.toStdString() << "\n";
+	cout << "Number of points: " << size << "\n";
 	return 0;
 }
 int CloudViewer::edgeSmooth(){
+	timeStart();
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -128,9 +134,13 @@ int CloudViewer::edgeSmooth(){
 	while (!viewer->wasStopped()) {
 		viewer->spinOnce(100);
 	}
+	timeCostSecond = timeOff();
+	cout << "Time cost: " << timeCostSecond.toStdString() << "\n";
+	cout << "Number of points: " << xyzCloud->size() << "\n";
 	return 0;
 }
 int CloudViewer::downsample(){
+	timeStart();
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -144,12 +154,15 @@ int CloudViewer::downsample(){
 	}
 	
 	xyzCloud = downsampleFile(xyzCloud);
-
+	timeCostSecond = timeOff();
+	cout << "Time cost: " << timeCostSecond.toStdString() << "\n";
+	cout << "Number of points: " << xyzCloud->size() << "\n";
 	return 0;
 }
 
 //Surface Resconstruction
 int CloudViewer::poisson() {
+	timeStart();
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -193,9 +206,13 @@ int CloudViewer::poisson() {
 	while (!viewer->wasStopped()) {
 		viewer->spinOnce(100);
 	}
+	timeCostSecond = timeOff();
+	cout << "Time cost: " << timeCostSecond.toStdString() << "\n";
+	cout << "Number of points: " << xyzCloud->size() << "\n";
 	return 0;
 }
 int CloudViewer::bspline() {
+	timeStart();
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -239,9 +256,13 @@ int CloudViewer::bspline() {
 	while (!viewer->wasStopped()) {
 		viewer->spinOnce(100);
 	}
+	timeCostSecond = timeOff();
+	cout << "Time cost: " << timeCostSecond.toStdString() << "\n";
+	cout << "Number of points: " << xyzCloud->size() << "\n";
 	return 0;
 }
 int CloudViewer::poisson3v() {
+	timeStart();
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -262,10 +283,13 @@ int CloudViewer::poisson3v() {
 	while (!viewer->wasStopped()) {
 		viewer->spinOnce(100);
 	}
-
+	timeCostSecond = timeOff();
+	cout << "Time cost: " << timeCostSecond.toStdString() << "\n";
+	cout << "Number of points: " << xyzCloud->size() << "\n";
 	return 0;
 }
 int CloudViewer::poisson2v() {
+	timeStart();
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -286,6 +310,9 @@ int CloudViewer::poisson2v() {
 	while (!viewer->wasStopped()) {
 		viewer->spinOnce(100);
 	};
+	timeCostSecond = timeOff();
+	cout << "Time cost: " << timeCostSecond.toStdString() << "\n";
+	cout << "Number of points: " << xyzCloud->size() << "\n";
 	return 0;
 }
 int CloudViewer::mls() {
@@ -326,6 +353,7 @@ void CloudViewer::doOpen(const QStringList& filePathList) {
 		ui.dataTree->addTopLevelItem(cloudName);
 
 		total_points += mycloud.cloud->points.size();
+		cout << "Number of points before: " << mycloud.cloud->points.size() << "\n";
 	}
 	ui.statusBar->showMessage("");
 	showPointcloudAdd();
@@ -1191,6 +1219,7 @@ void CloudViewer::debug(const string& s) {
 
 //Segmentation
 int CloudViewer::ransac_plane() {
+	timeStart();
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -1219,10 +1248,16 @@ int CloudViewer::ransac_plane() {
 
 	mycloud_vec.push_back(mycloud);
 	showPointcloudAdd();
+
+	timeCostSecond = timeOff();
+	cout << "Time cost: " << timeCostSecond.toStdString() << "\n";
+	cout << "Number of points: " << xyzCloud->size() << "\n";
+
 	return 0;
 }
 
 int CloudViewer::supervoxels() {
+	timeStart();
 	pcl::PointXYZ point;
 	xyzCloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
 	for (size_t i = 0; i < mycloud.cloud->size(); i++) {
@@ -1236,6 +1271,9 @@ int CloudViewer::supervoxels() {
 	}
 
 	supervoxels_segmentation(xyzCloud, viewer);
+	timeCostSecond = timeOff();
+	cout << "Time cost: " << timeCostSecond.toStdString() << "\n";
+	cout << "Number of points: " << xyzCloud->size() << "\n";
 
 	return 0;
 }
