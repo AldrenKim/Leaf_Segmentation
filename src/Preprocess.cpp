@@ -183,14 +183,13 @@ pcl::PolygonMesh poisson_recon_MLS_Pass(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzC
 	concatenateFields(*filtered, *cloud_normals, *cloud_smoothed_normals);
 
 	pcl::Poisson<pcl::PointNormal> poisson;
-	poisson.setDepth(4);
-	poisson.setSolverDivide(5);
-	poisson.setIsoDivide(5);
+	poisson.setDepth(8);
+	poisson.setSolverDivide(10);
+	poisson.setIsoDivide(10);
 	poisson.setPointWeight(8.0f);
 	poisson.setInputCloud(cloud_smoothed_normals);
 	pcl::PolygonMesh mesh;
 	poisson.reconstruct(mesh);
-
 	return mesh;
 }
 pcl::PolygonMesh poisson_recon_MLS_Pass_NE(pcl::PointCloud<pcl::PointXYZ>::Ptr xyzCloud) {
