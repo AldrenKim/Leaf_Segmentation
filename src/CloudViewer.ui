@@ -69,7 +69,7 @@
      <x>0</x>
      <y>0</y>
      <width>1246</width>
-     <height>23</height>
+     <height>19</height>
     </rect>
    </property>
    <property name="font">
@@ -836,12 +836,12 @@
   </action>
   <action name="pass_through_MLS_PoissonAction">
    <property name="text">
-    <string>Pass-through+MLS Poisson</string>
+    <string>Pass-through+Normal Estimation</string>
    </property>
   </action>
   <action name="pass_through_MLS_NormalsAction">
    <property name="text">
-    <string>Pass-through+MLS+Normals</string>
+    <string>Pass-through+Centroid</string>
    </property>
   </action>
   <action name="mlsAction">
